@@ -1,0 +1,11 @@
+challenge #EBG13 
+solution:  tyekqladkdpaiwib 
+hint: shift 13
+import codecs
+
+ciphertext = "Fhpprff vf abg svany, snvyher vf abg sngny: vg vf gur pbhentr gb pbagvahr gung pbhagf. Urer vf lbhe synt: glrxdynqxqcnvjvo"
+
+decoded = codecs.decode(ciphertext, 'rot_13')
+
+print(decoded)
+-----------------------------------------------------------------------------------------------
