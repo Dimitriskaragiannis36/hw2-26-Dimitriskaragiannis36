@@ -53,11 +53,6 @@ Image.fromarray(xor_img.astype(np.uint8)).save("xor_result.bmp")
 
 print("Saved xor_result.bmp")
 -----------------------------------------------------------------------------------------------
-challenge #Nonsense
-solution:  
-hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
-nc shell.hackintro.di.uoa.gr 13580
------------------------------------------------------------------------------------------------
 challenge #Broken Encryption 0
 solution: 4222ce3b61d2e91f74bea0b5e1f81398_ECB_is_the_w0rst 
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
@@ -450,5 +445,82 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+-----------------------------------------------------------------------------------------------
+challenge #tworc2
+solution: b48b2e90f78f26bd6a91df2931b798d3
+hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
+nc shell.hackintro.di.uoa.gr 47553
+from Crypto.Cipher import ARC2
+from pwn import *
+import binascii
+import os
 
+def solve():
+    print("[*] Connecting to server...")
+    r = remote('shell.hackintro.di.uoa.gr', 47553)
+    
+    # Διαβάζουμε μέχρι την γραμμή του flag
+    r.recvuntil(b'==================================\n')
+    encrypted_flag_hex = r.recvline().strip().decode()
+    r.recvuntil(b'==================================\n')
+    
+    encrypted_flag = binascii.unhexlify(encrypted_flag_hex)
+    print(f"[*] Encrypted flag: {encrypted_flag_hex}")
+    
+    # Στέλνουμε το δικό μας plaintext
+    plaintext = b"AAAAAAAA"
+    r.sendlineafter(b': ', plaintext)
+    
+    r.recvuntil(b'==================================\n')
+    ciphertext_hex = r.recvline().strip().decode()
+    ciphertext = binascii.unhexlify(ciphertext_hex)
+    print(f"[*] Known Plaintext: {plaintext}")
+    print(f"[*] Known Ciphertext: {ciphertext_hex}")
+    
+    r.close()
+
+    print("[*] Building encryption dictionary for key1 (this may take a minute...)")
+    enc_dict = {}
+    
+    # Δοκιμάζουμε και τα 16.7 εκατομμύρια πιθανά κλειδιά για το key1
+    for i in range(2**24):
+        k1 = i.to_bytes(3, 'big')
+        cipher1 = ARC2.new(k1.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        enc = cipher1.encrypt(plaintext)
+        enc_dict[enc] = k1
+        
+        if i % 1000000 == 0 and i > 0:
+            print(f"    Progress: {i}/{2**24} keys...")
+
+    print("[*] Searching for key2...")
+    key1, key2 = None, None
+    for i in range(2**24):
+        k2 = i.to_bytes(3, 'big')
+        cipher2 = ARC2.new(k2.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        dec = cipher2.decrypt(ciphertext)
+        
+        if dec in enc_dict:
+            key1 = enc_dict[dec]
+            key2 = k2
+            print(f"[+] Found keys! key1: {key1.hex()}, key2: {key2.hex()}")
+            break
+            
+        if i % 1000000 == 0 and i > 0:
+            print(f"    Progress: {i}/{2**24} keys...")
+            
+    if key1 and key2:
+        print("[*] Decrypting flag...")
+        cipher2 = ARC2.new(key2.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        cipher1 = ARC2.new(key1.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        
+        decrypted_flag = cipher1.decrypt(cipher2.decrypt(encrypted_flag))
+        
+        print("\n[+] FLAG:")
+        # Μπορεί να χρειαστεί να αφαιρέσουμε padding άρα εκτυπώνουμε το ωμό αποτέλεσμα
+        print(decrypted_flag.decode(errors='ignore'))
+    else:
+        print("[-] Keys not found. Something went wrong.")
+
+if __name__ == '__main__':
+    solve()
 -----------------------------------------------------------------------------------------------
