@@ -9,3 +9,446 @@ decoded = codecs.decode(ciphertext, 'rot_13')
 
 print(decoded)
 -----------------------------------------------------------------------------------------------
+challenge #encode
+solution:  7019bcd05af40f9bdd27c1b1fb42075f 
+hint: 3 φορές decode
+import base64
+
+data = "Vmtkb2JFbEhkR3hsVTBKd1kzcHZaMDU2UVhoUFYwcHFXa1JCTVZsWFdUQk5SMWsxV1cxU2EwMXFaR3BOVjBsNFdtMUpNRTFxUVROT1Yxazk="
+
+while True:
+    try:
+        decoded = base64.b64decode(data).decode()
+        print(decoded)
+        data = decoded
+    except:
+        break
+-----------------------------------------------------------------------------------------------
+challenge #Two-Time Pad
+solution:  dont_reuse_your_OTP_2bc2c099c
+hint: XOR των 2 εικόνων
+from PIL import Image, ImageFile
+import numpy as np
+
+# επιτρέπει truncated εικόνες
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+# άνοιγμα εικόνων
+img1 = Image.open("enc1.bmp")
+img2 = Image.open("enc2.bmp")
+
+# μετατροπή σε RGB για ασφάλεια
+img1 = img1.convert("RGB")
+img2 = img2.convert("RGB")
+
+# numpy arrays
+a = np.array(img1)
+b = np.array(img2)
+         
+# XOR
+xor_img = np.bitwise_xor(a, b)
+
+# save
+Image.fromarray(xor_img.astype(np.uint8)).save("xor_result.bmp")
+
+print("Saved xor_result.bmp")
+-----------------------------------------------------------------------------------------------
+challenge #Nonsense
+solution:  
+hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
+nc shell.hackintro.di.uoa.gr 13580
+-----------------------------------------------------------------------------------------------
+challenge #Broken Encryption 0
+solution: 4222ce3b61d2e91f74bea0b5e1f81398_ECB_is_the_w0rst 
+hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
+nc shell.hackintro.di.uoa.gr 42455
+dictionary attack
+#!/usr/bin/env python3
+"""
+Broken Encryption 0 — Byte-at-a-time ECB Oracle Attack
+=======================================================
+
+Target plaintext:  "agent {input} wants to see {flag}"
+                    ^^^^^^         ^^^^^^^^^^^^^^
+                    6 bytes         14 bytes
+Prefix before flag = 6 + len(input) + 14 = 20 + len(input)
+"""
+
+from pwn import remote, context, log
+import string
+
+# --- connection parameters ---
+HOST = "shell.hackintro.di.uoa.gr"
+PORT = 42455
+BLOCK = 16
+
+# The service builds: "agent {input} wants to see {flag}"
+PREFIX = "agent "
+SUFFIX = " wants to see "
+FIXED_LEN = len(PREFIX) + len(SUFFIX)
+
+# candidate characters (grouped for readability)
+CHARSET = (
+    string.ascii_lowercase + string.ascii_uppercase + string.digits
+    + "_{}-" + "!@#$%^&*()+=.,;:?/\\'\"|<>[] "
+)
+
+
+def query_server(agent_input: str) -> bytes:
+    conn = remote(HOST, PORT, timeout=15)
+    conn.recvuntil(b"Agent number: ")
+    conn.sendline(agent_input.encode())
+    resp = conn.recvline(timeout=10).strip()
+    conn.close()
+    return bytes.fromhex(resp.decode())
+
+
+def slice_block(ct: bytes, block_num: int) -> bytes:
+    s = block_num * BLOCK
+    return ct[s : s + BLOCK]
+
+
+def compute_L(i: int) -> int:
+    """Return L so that flag[i] sits as the final byte of a block."""
+    return (BLOCK - ((FIXED_LEN + 1 + i) % BLOCK)) % BLOCK
+
+
+def block_index_for(i: int) -> int:
+    L = compute_L(i)
+    return (FIXED_LEN + L + i) // BLOCK
+
+
+def get_prev15(i: int, recovered: str) -> str:
+    L = compute_L(i)
+    p = PREFIX + ("A" * L) + SUFFIX + recovered
+    pos = FIXED_LEN + L + i
+    return p[pos - 15 : pos]
+
+
+def infer_flag_length() -> int:
+    baseline = len(query_server(""))
+    for L in range(1, BLOCK + 1):
+        if len(query_server("A" * L)) > baseline:
+            mod = (-FIXED_LEN - L) % BLOCK
+            for cand in range(baseline - BLOCK - FIXED_LEN + 1, baseline - FIXED_LEN + 1):
+                if cand % BLOCK == mod:
+                    return cand
+    raise RuntimeError("could not determine flag length")
+
+
+def main_attack():
+    recovered = ""
+    log.info("Probing for flag length...")
+    n = infer_flag_length()
+    log.info(f"flag length = {n}")
+
+    log.info("Running optimized ECB oracle attack")
+    for i in range(n):
+        L = compute_L(i)
+        ref_ct = query_server("A" * L)
+        target_blk = slice_block(ref_ct, block_index_for(i))
+
+        k15 = get_prev15(i, recovered)
+        alignment = "A" * (BLOCK - len(PREFIX))
+        payload = alignment + "".join(k15 + ch for ch in CHARSET)
+        dict_ct = query_server(payload)
+
+        hit = False
+        for pos, ch in enumerate(CHARSET):
+            if slice_block(dict_ct, 1 + pos) == target_blk:
+                recovered += ch
+                log.success(f"flag[{i}] = {ch!r} -> {recovered}")
+                hit = True
+                break
+
+        if not hit:
+            log.warning("No match found; assuming flag end or non-printable byte")
+            break
+
+        if recovered.endswith("}"):
+            break
+
+    print()
+    log.success(f"FLAG = {recovered}")
+    return recovered
+
+
+if __name__ == "__main__":
+    context.log_level = "info"
+    main_attack()
+-----------------------------------------------------------------------------------------------
+challenge #Ol' RSA
+solution:  f754e501a2e6a6e5f91ceddd1aa68207
+hint: εντόπισε ότι το κλειδί είναι γελοία μικρό και κάνε τα μαθηματικά του RSA ανάποδα
+#!/usr/bin/env python3
+"""Solve weak RSA CTF challenges from an SSH public key and encrypted blob.
+
+Flow:
+1. Parse SSH RSA public key (extract e and n).
+2. Fetch factorization of n from FactorDB.
+3. Build private exponent d.
+4. Decrypt flag.enc as raw RSA: m = c^d mod n.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import json
+import struct
+import sys
+import urllib.parse
+import urllib.request
+from typing import Tuple
+
+
+def parse_ssh_rsa_pub(pub_path: str) -> Tuple[int, int]:
+    with open(pub_path, "r", encoding="utf-8") as f:
+        line = f.read().strip()
+
+    parts = line.split()
+    if len(parts) < 2 or parts[0] != "ssh-rsa":
+        raise ValueError("Unsupported public key format. Expected: ssh-rsa ...")
+
+    blob = base64.b64decode(parts[1])
+    offset = 0
+
+    def read_u32() -> int:
+        nonlocal offset
+        if offset + 4 > len(blob):
+            raise ValueError("Corrupted SSH key blob")
+        value = struct.unpack(">I", blob[offset : offset + 4])[0]
+        offset += 4
+        return value
+
+    def read_bytes() -> bytes:
+        nonlocal offset
+        length = read_u32()
+        if offset + length > len(blob):
+            raise ValueError("Corrupted SSH key blob")
+        data = blob[offset : offset + length]
+        offset += length
+        return data
+
+    key_type = read_bytes().decode("ascii", errors="strict")
+    if key_type != "ssh-rsa":
+        raise ValueError(f"Unexpected key type in blob: {key_type}")
+
+    e = int.from_bytes(read_bytes(), "big")
+    n = int.from_bytes(read_bytes(), "big")
+    return e, n
+
+
+def fetch_factors_from_factordb(n: int) -> Tuple[int, int]:
+    query = urllib.parse.urlencode({"query": str(n)})
+    url = f"http://www.factordb.com/api?{query}"
+
+    with urllib.request.urlopen(url, timeout=15) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+
+    status = data.get("status")
+    factors = data.get("factors", [])
+
+    if status not in {"FF", "P", "Prp"}:
+        raise RuntimeError(
+            f"FactorDB does not have full factors yet (status={status})."
+        )
+
+    expanded = []
+    for raw_factor, exp in factors:
+        factor_int = int(raw_factor)
+        expanded.extend([factor_int] * int(exp))
+
+    if len(expanded) != 2:
+        raise RuntimeError(
+            f"Expected exactly 2 prime factors for RSA modulus, got {len(expanded)}."
+        )
+
+    p, q = expanded
+    if p * q != n:
+        raise RuntimeError("FactorDB factors do not multiply back to n.")
+
+    return p, q
+
+
+def mod_inverse(a: int, m: int) -> int:
+    try:
+        return pow(a, -1, m)
+    except ValueError as exc:
+        raise RuntimeError("No modular inverse for e modulo phi(n).") from exc
+
+
+def decrypt_raw_rsa(enc_path: str, n: int, d: int) -> bytes:
+    with open(enc_path, "rb") as f:
+        c_bytes = f.read()
+
+    c = int.from_bytes(c_bytes, "big")
+    if c >= n:
+        raise RuntimeError("Ciphertext integer is >= modulus. Not valid raw RSA ciphertext.")
+
+    m = pow(c, d, n)
+    k = (n.bit_length() + 7) // 8
+    m_bytes = m.to_bytes(k, "big")
+    return m_bytes.lstrip(b"\x00")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Solve weak RSA challenge from SSH pub key")
+    parser.add_argument("--pub", default="id_rsa.pub", help="Path to SSH RSA public key")
+    parser.add_argument("--enc", default="flag.enc", help="Path to encrypted flag bytes")
+    args = parser.parse_args()
+
+    e, n = parse_ssh_rsa_pub(args.pub)
+    print(f"[+] e = {e}")
+    print(f"[+] n = {n}")
+    print(f"[+] n bit length = {n.bit_length()}")
+
+    p, q = fetch_factors_from_factordb(n)
+    print(f"[+] p = {p}")
+    print(f"[+] q = {q}")
+
+    phi = (p - 1) * (q - 1)
+    d = mod_inverse(e, phi)
+    print(f"[+] d = {d}")
+
+    plaintext = decrypt_raw_rsa(args.enc, n, d)
+    print(f"[+] raw plaintext bytes = {plaintext!r}")
+
+    try:
+        text = plaintext.decode("utf-8")
+        print(f"[+] decrypted text = {text}")
+    except UnicodeDecodeError:
+        print(f"[+] decrypted hex = {plaintext.hex()}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"[!] Error: {exc}", file=sys.stderr)
+        raise SystemExit(1)
+
+-----------------------------------------------------------------------------------------------
+challenge #Cwybdo2
+solution:  2151a148ca163d239dc2816286496bae
+hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
+nc shell.hackintro.di.uoa.gr 60775
+#!/usr/bin/env python3
+import ast
+import binascii
+import re
+import socket
+
+HOST = "shell.hackintro.di.uoa.gr"
+PORT = 60775
+
+
+def recv_until(sock, marker: bytes) -> bytes:
+    data = b""
+    while marker not in data:
+        chunk = sock.recv(4096)
+        if not chunk:
+            raise ConnectionError("Connection closed while waiting for prompt")
+        data += chunk
+    return data
+
+
+def send_line(sock, s: str) -> None:
+    sock.sendall(s.encode() + b"\n")
+
+
+def choose_create(sock) -> bytes:
+    recv_until(sock, b"What would you like to do?\n")
+    send_line(sock, "c")
+
+    recv_until(sock, b"Options: (c)bc, (e)cb, (o)fb\n")
+    send_line(sock, "c")
+
+    recv_until(sock, b"How many bytes long should the key be (must be 16, 24, or 32)\n")
+    send_line(sock, "16")
+
+    out = recv_until(sock, b"What would you like to do?\n")
+    m = re.search(rb"Your \(hex encoded\) iv is: b'([0-9a-f]+)'", out)
+    if not m:
+        raise RuntimeError(f"Could not parse IV from output:\n{out!r}")
+    iv = bytes.fromhex(m.group(1).decode())
+    return iv
+
+
+def encrypt_flag(sock) -> bytes:
+    send_line(sock, "e")
+    recv_until(sock, b"(r)andom, (f)lag, or (c)ustom data?\n")
+    send_line(sock, "f")
+    out = recv_until(sock, b"What would you like to do?\n")
+
+    m = re.search(rb"ENCRYPTED DATA:\n(b'[0-9a-f]+')", out)
+    if not m:
+        raise RuntimeError(f"Could not parse encrypted flag from output:\n{out!r}")
+    ct_hex_bytes_repr = m.group(1).decode()
+    ct_hex = ast.literal_eval(ct_hex_bytes_repr).decode()
+    return bytes.fromhex(ct_hex)
+
+
+def decrypt_and_get_pt(sock, ct: bytes) -> bytes:
+    send_line(sock, "d")
+    recv_until(sock, b"Please enter the data as hex\n")
+    send_line(sock, ct.hex())
+
+    out = recv_until(sock, b"What would you like to do?\n")
+    if b"DECRYPTED DATA:" not in out:
+        raise RuntimeError(f"Decrypt failed or filtered:\n{out!r}")
+
+    m = re.search(rb"DECRYPTED DATA:\n(.+?)\nWhat would you like to do\?\n", out, flags=re.S)
+    if not m:
+        raise RuntimeError(f"Could not parse decrypted bytes:\n{out!r}")
+
+    # Service prints Python bytes repr, parse it safely.
+    pt_line = m.group(1).strip().decode(errors="replace")
+    return ast.literal_eval(pt_line)
+
+
+def set_next_iv_via_decrypt(sock, next_iv: bytes) -> None:
+    # In CBC mode, after decrypting any ciphertext, the internal chaining value
+    # becomes the last ciphertext block. Decrypting one block sets it directly.
+    send_line(sock, "d")
+    recv_until(sock, b"Please enter the data as hex\n")
+    send_line(sock, next_iv.hex())
+    recv_until(sock, b"What would you like to do?\n")
+
+
+def xor_bytes(a: bytes, b: bytes) -> bytes:
+    return bytes(x ^ y for x, y in zip(a, b))
+
+
+def main() -> None:
+    with socket.create_connection((HOST, PORT)) as sock:
+        iv0 = choose_create(sock)
+        enc_flag = encrypt_flag(sock)
+
+        c1 = enc_flag[:16]
+
+        # Force chaining value to 0^16 before decrypting target ciphertext.
+        set_next_iv_via_decrypt(sock, b"\x00" * 16)
+        d_c1 = decrypt_and_get_pt(sock, enc_flag)[:16]
+
+        p1 = xor_bytes(d_c1, iv0)
+
+        # Get the remaining plaintext blocks from a normal state-skewed decrypt.
+        leaked = decrypt_and_get_pt(sock, enc_flag)
+        recovered = p1 + leaked[16:]
+
+        print("IV0:", iv0.hex())
+        print("Encrypted flag:", enc_flag.hex())
+        print("Recovered plaintext bytes:", recovered)
+        try:
+            print("Recovered plaintext (ascii):", recovered.decode("ascii"))
+        except UnicodeDecodeError:
+            print("Recovered plaintext contains non-ascii bytes")
+
+
+if __name__ == "__main__":
+    main()
+
+-----------------------------------------------------------------------------------------------
