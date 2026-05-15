@@ -1,4 +1,4 @@
-challenge #EBG13 
+challenge: #EBG13 
 solution:  tyekqladkdpaiwib 
 hint: shift 13
 import codecs
@@ -9,7 +9,7 @@ decoded = codecs.decode(ciphertext, 'rot_13')
 
 print(decoded)
 -----------------------------------------------------------------------------------------------
-challenge #encode
+challenge: #encode
 solution:  7019bcd05af40f9bdd27c1b1fb42075f 
 hint: 3 φορές decode
 import base64
@@ -24,7 +24,56 @@ while True:
     except:
         break
 -----------------------------------------------------------------------------------------------
-challenge #Two-Time Pad
+challenge: #Bad door
+solution:  924060079dc50bec560a53e7b44d6eef
+hint: Username: bckdr
+Password: pyrkagias
+-----------------------------------------------------------------------------------------------
+challenge: #Cooking 1
+solution: 6fe4751276d8fe08f4eb060e4b9e84ba
+hint: Username: guest
+Password: guest
+F12 > Εφαρμογή > Cookie > http:/shell.hackintro.di.uoa.gr:48641
+> auth > "{\"user\": \"guest\"\054 \"password\": \"guest\"\054 \"admin\": 1}"
+> refresh
+-----------------------------------------------------------------------------------------------
+challenge: #badform
+solution: no_form_can_stop_me_4b65f3e7db2f2c9628877658ab50a4af
+hint: http://shell.hackintro.di.uoa.gr:62603/ > F12 > Πηγές
+> Αποσπάσματα > copy paste το παρακάτω και ctrl+enter
+// 1. Stop the div from jumping away
+document.querySelector('div').onmouseover = null;
+
+// 2. Clear the 'STAHP' handlers from every input
+var inputs = document.getElementsByTagName("input");
+for (var i = 0; i < inputs.length; i++) {
+    inputs[i].onchange = null;
+    inputs[i].onkeypress = null;
+    inputs[i].onfocus = null;
+    
+    // 3. Enable the text box and the submit button
+    inputs[i].disabled = false;
+}
+
+// 4. Clear the value so you can type
+document.getElementsByName('flag')[0].value = '';
+> flag στο πεδίο
+-----------------------------------------------------------------------------------------------
+challenge: #Cooking 2
+solution: f5b55a3f9786673439e979b6dbe50e0d
+hint: Username: guest
+Password: guest
+F12 > Εφαρμογή > Cookie > http:/shell.hackintro.di.uoa.gr:48641
+> auth > eyJ1c2VyIjogImd1ZXN0IiwgInBhc3N3b3JkIjogImd5ZXN0IiwgImFkbWluIjogMH0=
+> base64 dec > "admin\": 1 > base64 enc > eyJ1c2VyIjoiZ3Vlc3QiLCJwYXNzd29yZCI6Imd5ZXN0IiwiYWRtaW4iOjF9
+> refresh
+-----------------------------------------------------------------------------------------------
+challenge: #wasm 1
+solution: now_you_know_some_webassembly
+hint: F12 > Πηγές -> wasm -> 00015c96 > κάτω κάτω: 226181818082994672697
+είναι το secret που ζητάει
+-----------------------------------------------------------------------------------------------
+challenge: #Two-Time Pad
 solution:  dont_reuse_your_OTP_2bc2c099c
 hint: XOR των 2 εικόνων
 from PIL import Image, ImageFile
@@ -53,7 +102,7 @@ Image.fromarray(xor_img.astype(np.uint8)).save("xor_result.bmp")
 
 print("Saved xor_result.bmp")
 -----------------------------------------------------------------------------------------------
-challenge #Nonsense
+challenge: #Nonsense
 solution: a5f25f42b84a006b20bafeaf071d3771
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
 nc shell.hackintro.di.uoa.gr 13580
@@ -186,7 +235,7 @@ for attempt in range(1, MAX_ATTEMPTS + 1):
         print(flag_guess.decode(errors="ignore").strip())
     print("[-] Not found. Retrying...\n")
 -----------------------------------------------------------------------------------------------
-challenge #Broken Encryption 0
+challenge: #Broken Encryption 0
 solution: 4222ce3b61d2e91f74bea0b5e1f81398_ECB_is_the_w0rst 
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
 nc shell.hackintro.di.uoa.gr 42455
@@ -305,7 +354,7 @@ if __name__ == "__main__":
     context.log_level = "info"
     main_attack()
 -----------------------------------------------------------------------------------------------
-challenge #Ol' RSA
+challenge: #Ol' RSA
 solution:  f754e501a2e6a6e5f91ceddd1aa68207
 hint: εντόπισε ότι το κλειδί είναι γελοία μικρό και κάνε τα μαθηματικά του RSA ανάποδα
 #!/usr/bin/env python3
@@ -459,7 +508,7 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
 -----------------------------------------------------------------------------------------------
-challenge #Cwybdo2
+challenge: #Cwybdo2
 solution:  2151a148ca163d239dc2816286496bae
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
 nc shell.hackintro.di.uoa.gr 60775
@@ -579,12 +628,12 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 -----------------------------------------------------------------------------------------------
-challenge #Broken Encryption 0
+challenge: #Broken Encryption 0
 solution: 4222ce3b61d2e91f74bea0b5e1f81398_ECB_is_the_w0rst 
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
 nc shell.hackintro.di.uoa.gr 42455
 -----------------------------------------------------------------------------------------------
-challenge #Petroff Defense
+challenge: #Petroff Defense
 solution: always_independent_keys_e3AeEe6EBaDfCaCD
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
 nc shell.hackintro.di.uoa.gr 20358
