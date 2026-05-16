@@ -276,6 +276,21 @@ for attempt in range(1, MAX_ATTEMPTS + 1):
         print(flag_guess.decode(errors="ignore").strip())
     print("[-] Not found. Retrying...\n")
 -----------------------------------------------------------------------------------------------
+challenge: #wasm 2
+solution: 86753091344113441122
+hint: F12 > Πηγές -> wasm -> 00016bf2 > βρίσκω συνάρτηση  (func $_check (;21;)
+> έχεις αριθμούς σε ascii > μετατροπή με το script
+ascii_values = [
+    56, 54, 55, 53, 51,
+    48, 57, 49, 51, 52,
+    52, 49, 49, 51, 52,
+    52, 49, 49, 50, 50
+]
+
+result = ''.join(chr(x) for x in ascii_values)
+
+print(result)
+-----------------------------------------------------------------------------------------------
 challenge: #Broken Encryption 0
 solution: 4222ce3b61d2e91f74bea0b5e1f81398_ECB_is_the_w0rst 
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
@@ -547,7 +562,11 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"[!] Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
-
+-----------------------------------------------------------------------------------------------
+challenge: #Sequels are the worst 2
+solution: 8934e30c7dcd92b51336d544ce8f4e9b
+hint: Username: ' UNION SELECT 'admin','pass',1 -- 
+Password: pass
 -----------------------------------------------------------------------------------------------
 challenge: #Cwybdo2
 solution:  2151a148ca163d239dc2816286496bae
