@@ -24,6 +24,10 @@ while True:
     except:
         break
 -----------------------------------------------------------------------------------------------
+challenge: #Redacted
+solution:  redact_like_the_nyt_aDC6EEA9a9B35BF6 
+hint: ctrl + A > paste κάπου για να φανεί ο κωδικός
+-----------------------------------------------------------------------------------------------
 challenge: #Bad door
 solution:  924060079dc50bec560a53e7b44d6eef
 hint: Username: bckdr
@@ -562,6 +566,28 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"[!] Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
+-----------------------------------------------------------------------------------------------
+challenge: #Ol' RSA
+solution: spider12
+hint: wget https://github.com/RickdeJager/stegseek/releases/download/v0.6/stegseek_0.6-1.deb >
+sudo apt install ./stegseek_0.6-1.deb >
+wget https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt >
+stegseek κάθε φορά με το παραγόμενο και rockyou.text > stegseek akylas.wav rockyou.txt
+akylas.wav → fairytale.wav
+fairytale.wav → rilke.jpg
+rilke.jpg → sphinx.txt > 
+“the person who lives in disguise, deals in secrets and tells lies”
+→ spy
+“what's always the last thing to mend, the middle of middle and end of end”
+→ το γράμμα d
+(middle → middle, end → end)
+“the sound often heard during the search for a hard-to-find word”
+→ er / “uhh… er…”
+“Which creature would you be unwilling to kiss?”
+→ spider.
+“append the points from Cyprus”
+
+Η Κύπρος στο Eurovision τότε είχε δώσει 12 points
 -----------------------------------------------------------------------------------------------
 challenge: #Sequels are the worst 2
 solution: 8934e30c7dcd92b51336d544ce8f4e9b
