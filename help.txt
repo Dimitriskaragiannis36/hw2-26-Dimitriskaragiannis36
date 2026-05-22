@@ -147,6 +147,10 @@ print(new_cookie)
 > 4ce5eea3406a696e5bd93642d227810432831d5b4e393881f44c410aa6c47df357cbb203745961571826e6047e0215082e3eb4b229f5d4da66bbb1b43b07b5b774f3
 > copy paste > refresh
 -----------------------------------------------------------------------------------------------
+challenge: #Influencer
+solution: a_tiny_leak_may_ruin_everything_c792da86fde33d5076f787b87e5e4bf9
+hint: 
+-----------------------------------------------------------------------------------------------
 challenge: #Nonsense
 solution: a5f25f42b84a006b20bafeaf071d3771
 hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr
@@ -593,6 +597,14 @@ challenge: #Sequels are the worst 2
 solution: 8934e30c7dcd92b51336d544ce8f4e9b
 hint: Username: ' UNION SELECT 'admin','pass',1 -- 
 Password: pass
+-----------------------------------------------------------------------------------------------
+challenge: #Blob Quest 1
+solution: puzzle_96c1012
+hint: πηγές > shell.hackintro25.di.uoa.gr: 15951 > js > game.min.js >
+γραμμή ~285 > κονσόλα > 
+for (let i = 0; i < 4096; i++) {
+    Client.sendPosition(-1, 0x74000 | i);
+}
 -----------------------------------------------------------------------------------------------
 challenge: #Cwybdo2
 solution:  2151a148ca163d239dc2816286496bae
@@ -1106,6 +1118,173 @@ def exploit():
 
 def main():
     exploit()
+
+
+if __name__ == "__main__":
+    main()
+-----------------------------------------------------------------------------------------------
+challenge: #wasm 3
+solution: vm5_all_the_w4y_down
+hint: #!/usr/bin/env python3
+import struct
+from pathlib import Path
+
+OP_HALT_OK = 0
+OP_SET_CELL_IMM = 1
+OP_SET_PTR_IMM = 2
+OP_READ_INPUT = 3
+OP_COPY_CELL = 4
+OP_INC_CELL = 5
+OP_DEC_CELL = 6
+OP_JZ = 7
+OP_HALT_FAIL = 8
+
+
+def read_varuint(data: bytes, pos: int) -> tuple[int, int]:
+    result = 0
+    shift = 0
+    while True:
+        b = data[pos]
+        pos += 1
+        result |= (b & 0x7f) << shift
+        if b & 0x80 == 0:
+            break
+        shift += 7
+    return result, pos
+
+
+def load_program(wasm_path: Path, base: int = 1024, count: int = 1100) -> list[int]:
+    wasm = wasm_path.read_bytes()
+
+    pos = 8
+    segments = []
+    while pos < len(wasm):
+        section_id = wasm[pos]
+        pos += 1
+        size, pos = read_varuint(wasm, pos)
+        payload = wasm[pos : pos + size]
+        pos += size
+        if section_id != 11:
+            continue
+
+        p = 0
+        seg_count, p = read_varuint(payload, p)
+        for _ in range(seg_count):
+            flag, p = read_varuint(payload, p)
+            if flag == 0:
+                if payload[p] != 0x41:
+                    raise ValueError("unexpected offset opcode")
+                p += 1
+                offset, p = read_varuint(payload, p)
+                if payload[p] != 0x0b:
+                    raise ValueError("unexpected end opcode")
+                p += 1
+            elif flag == 2:
+                _memidx, p = read_varuint(payload, p)
+                if payload[p] != 0x41:
+                    raise ValueError("unexpected offset opcode")
+                p += 1
+                offset, p = read_varuint(payload, p)
+                if payload[p] != 0x0b:
+                    raise ValueError("unexpected end opcode")
+                p += 1
+            else:
+                raise ValueError(f"unsupported data segment flag: {flag}")
+
+            data_size, p = read_varuint(payload, p)
+            data = payload[p : p + data_size]
+            p += data_size
+            segments.append((offset, data))
+
+    max_end = max(o + len(d) for o, d in segments)
+    mem = bytearray(max_end + 1024)
+    for o, d in segments:
+        mem[o : o + len(d)] = d
+
+    prog = []
+    for idx in range(count):
+        off = base + idx * 4
+        prog.append(struct.unpack_from("<I", mem, off)[0])
+    return prog
+
+
+def run_vm(prog: list[int], inp: bytes) -> tuple[bool, int]:
+    tape = bytearray(256)
+    ptr = 0
+    ip = 0
+    in_idx = 0
+    while True:
+        op = prog[ip]
+        if op == OP_HALT_OK:
+            return True, in_idx
+        if op == OP_HALT_FAIL:
+            return False, in_idx
+        if op == OP_SET_CELL_IMM:
+            tape[ptr] = prog[ip + 1] & 0xff
+            ip += 2
+            continue
+        if op == OP_SET_PTR_IMM:
+            ptr = prog[ip + 1] & 0xff
+            ip += 2
+            continue
+        if op == OP_READ_INPUT:
+            tape[ptr] = inp[in_idx]
+            in_idx += 1
+            ip += 1
+            continue
+        if op == OP_COPY_CELL:
+            src = prog[ip + 1] & 0xff
+            tape[ptr] = tape[src]
+            ip += 2
+            continue
+        if op == OP_INC_CELL:
+            tape[ptr] = (tape[ptr] + 1) & 0xff
+            ip += 1
+            continue
+        if op == OP_DEC_CELL:
+            tape[ptr] = (tape[ptr] - 1) & 0xff
+            ip += 1
+            continue
+        if op == OP_JZ:
+            hi = prog[ip + 1] & 0xff
+            lo = prog[ip + 2] & 0xff
+            target = (hi << 8) | lo
+            if tape[ptr] == 0:
+                ip = target
+            else:
+                ip += 3
+            continue
+        raise RuntimeError(f"unknown op {op} at {ip}")
+
+
+def solve(wasm_path: Path, length: int = 20) -> bytes:
+    prog = load_program(wasm_path)
+    sol = bytearray([0] * length)
+
+    for i in range(length):
+        found = None
+        for b in range(256):
+            sol[i] = b
+            ok, reads = run_vm(prog, bytes(sol))
+            if i < length - 1:
+                if reads > i + 1:
+                    found = b
+                    break
+            else:
+                if ok:
+                    found = b
+                    break
+
+        if found is None:
+            raise RuntimeError(f"no byte found at position {i}")
+
+    return bytes(sol)
+
+
+def main() -> None:
+    wasm_path = Path("5245e7a6")
+    flag = solve(wasm_path)
+    print(flag.decode("latin1"))
 
 
 if __name__ == "__main__":
